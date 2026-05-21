@@ -1168,6 +1168,21 @@ class SolarSystemApp {
       );
     };
 
+    const reEnableOrbitControls = () => {
+      const forward = new THREE.Vector3();
+      this.camera.getWorldDirection(forward);
+      const distance = Math.max(50, this.camera.position.distanceTo(this.controls.target));
+
+      const wasDamping = this.controls.enableDamping;
+      this.controls.enableDamping = false;
+
+      this.controls.target.copy(this.camera.position).addScaledVector(forward, distance);
+      this.controls.enabled = true;
+      this.controls.update();
+
+      this.controls.enableDamping = wasDamping;
+    };
+
     window.addEventListener('touchstart', (e) => {
       if (window.innerWidth > 900) return;
 
@@ -1186,6 +1201,9 @@ class SolarSystemApp {
             this.joystickLeft.style.top = `${touch.clientY - 50}px`;
             this.joystickLeft.style.opacity = '0.9';
             this.knobLeft.style.transform = 'translate(0px, 0px)';
+
+            // Disable OrbitControls instantly to allow native movements without visual fight
+            this.controls.enabled = false;
           }
         } else {
           if (!this.rightJoystickActive) {
@@ -1198,7 +1216,7 @@ class SolarSystemApp {
             this.joystickRight.style.top = `${touch.clientY - 50}px`;
             this.joystickRight.style.opacity = '0.9';
             this.knobRight.style.transform = 'translate(0px, 0px)';
-            
+
             // Disable OrbitControls instantly to allow native FPS looking in animate loop
             this.controls.enabled = false;
           }
@@ -1251,6 +1269,10 @@ class SolarSystemApp {
         this.leftJoystickInput = { x: 0, y: 0 };
         this.joystickLeft.style.opacity = '0';
         this.knobLeft.style.transform = 'translate(0px, 0px)';
+
+        if (!this.rightJoystickActive) {
+          reEnableOrbitControls();
+        }
       } else if (this.rightJoystickActive && touch.identifier === this.rightTouchId) {
         this.rightJoystickActive = false;
         this.rightTouchId = null;
@@ -1258,19 +1280,9 @@ class SolarSystemApp {
         this.joystickRight.style.opacity = '0';
         this.knobRight.style.transform = 'translate(0px, 0px)';
 
-        // Position OrbitControls target along camera's new local forward vector and re-enable it
-        const forward = new THREE.Vector3();
-        this.camera.getWorldDirection(forward);
-        const distance = Math.max(50, this.camera.position.distanceTo(this.controls.target));
-
-        const wasDamping = this.controls.enableDamping;
-        this.controls.enableDamping = false;
-
-        this.controls.target.copy(this.camera.position).addScaledVector(forward, distance);
-        this.controls.enabled = true;
-        this.controls.update();
-
-        this.controls.enableDamping = wasDamping;
+        if (!this.leftJoystickActive) {
+          reEnableOrbitControls();
+        }
       }
     };
 
@@ -1313,11 +1325,11 @@ class SolarSystemApp {
         moveDirection.normalize();
       }
 
-      // True analog input force scaling
+      // Analog force scaling
       const inputLength = Math.min(1.0, Math.sqrt(this.leftJoystickInput.x * this.leftJoystickInput.x + this.leftJoystickInput.y * this.leftJoystickInput.y));
 
       const distance = this.camera.position.distanceTo(this.controls.target);
-      const panSpeed = Math.max(0.4, distance * 0.015) * 0.35 * inputLength;
+      const panSpeed = Math.max(0.4, distance * 0.015) * 0.6 * inputLength;
 
       const movement = moveDirection.multiplyScalar(panSpeed);
       this.controls.target.add(movement);
@@ -1335,15 +1347,17 @@ class SolarSystemApp {
         this.deselectPlanet();
       }
 
-      // Rotate camera in place natively (YXZ Euler order prevents camera gimbal lock)
+      // Rotate camera in place natively with an exponential precision curve
+      const rx = Math.sign(this.rightJoystickInput.x) * Math.pow(Math.abs(this.rightJoystickInput.x), 1.5);
+      const ry = Math.sign(this.rightJoystickInput.y) * Math.pow(Math.abs(this.rightJoystickInput.y), 1.5);
+
       this.camera.rotation.order = 'YXZ';
-      this.camera.rotation.y -= this.rightJoystickInput.x * 0.035;
-      this.camera.rotation.x -= this.rightJoystickInput.y * 0.035;
+      this.camera.rotation.y -= rx * 0.025;
+      this.camera.rotation.x -= ry * 0.025;
       this.camera.rotation.z = 0;
       this.camera.rotation.x = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, this.camera.rotation.x));
     }
   }
-
 
   // --- Animation loop ---
 

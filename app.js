@@ -1318,6 +1318,10 @@ class SolarSystemApp {
         this.deselectPlanet();
       }
 
+      // Temporarily disable damping to prevent camera position drift
+      const wasDamping = this.controls.enableDamping;
+      this.controls.enableDamping = false;
+
       // 1. Get the camera's current unit forward look direction
       const forward = new THREE.Vector3();
       this.camera.getWorldDirection(forward);
@@ -1340,7 +1344,18 @@ class SolarSystemApp {
       // 5. Update OrbitControls target to be directly in front of the camera
       // Keep the current camera-to-target distance to maintain focus and zoom scale
       const distance = this.camera.position.distanceTo(this.controls.target);
-      this.controls.target.copy(this.camera.position).addScaledVector(newForward, distance);
+      const originalCamPos = this.camera.position.clone();
+      
+      this.controls.target.copy(originalCamPos).addScaledVector(newForward, distance);
+      
+      // Force instant update to synchronize OrbitControls internal state
+      this.controls.update();
+      
+      // Lock camera position exactly to prevent damping/interpolation drift
+      this.camera.position.copy(originalCamPos);
+      
+      // Restore damping state
+      this.controls.enableDamping = wasDamping;
     }
   }
 

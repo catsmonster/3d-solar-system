@@ -105,7 +105,7 @@ class SolarSystemApp {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.25;
+    this.renderer.toneMappingExposure = 1.05;
     this.container.appendChild(this.renderer.domElement);
 
     // Orbit Controls
@@ -118,17 +118,17 @@ class SolarSystemApp {
 
   createLighting() {
     // Ambient Light - soft cosmic deep blue fill light so shadows aren't pitch black
-    this.ambientLight = new THREE.AmbientLight(0x22264a, 0.35);
+    this.ambientLight = new THREE.AmbientLight(0x22264a, 0.15);
     this.scene.add(this.ambientLight);
 
     // Hemisphere Light - simulates a warm cosmic nebula fill (soft blue-gray from top, dark violet from bottom)
     // This gives planets a gorgeous, premium 3D volumetric look, ensuring procedural textures are visible even in shadow
-    this.hemiLight = new THREE.HemisphereLight(0x4b6bb0, 0x0c0c17, 0.75);
+    this.hemiLight = new THREE.HemisphereLight(0x4b6bb0, 0x0c0c17, 0.35);
     this.scene.add(this.hemiLight);
 
     // Point Light - positioned inside the Sun to brilliantly illuminate planet faces
-    // Adjusted to 10.0 intensity and 0.08 decay to prevent oversaturating inner planets while still reaching outer bodies
-    this.sunLight = new THREE.PointLight(0xffffff, 10.0, 2000, 0.08);
+    // Tuned down to 3.2 intensity and 0.08 decay to make details highly legible and give a gorgeous deep-space contrast
+    this.sunLight = new THREE.PointLight(0xffffff, 3.2, 2000, 0.08);
     this.sunLight.castShadow = true;
     this.sunLight.shadow.mapSize.width = 2048;
     this.sunLight.shadow.mapSize.height = 2048;

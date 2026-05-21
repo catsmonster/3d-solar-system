@@ -117,6 +117,7 @@ class SolarSystemApp {
     // Camera
     this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
     this.camera.position.set(0, 150, 260);
+    this.camera.rotation.order = 'YXZ'; // FPS-style Euler order: yaw first, then pitch
 
     // Renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
@@ -1351,7 +1352,6 @@ class SolarSystemApp {
       const rx = Math.sign(this.rightJoystickInput.x) * Math.pow(Math.abs(this.rightJoystickInput.x), 1.5);
       const ry = Math.sign(this.rightJoystickInput.y) * Math.pow(Math.abs(this.rightJoystickInput.y), 1.5);
 
-      this.camera.rotation.order = 'YXZ';
       this.camera.rotation.y -= rx * 0.025;
       this.camera.rotation.x -= ry * 0.025;
       this.camera.rotation.z = 0;
@@ -1427,7 +1427,9 @@ class SolarSystemApp {
       this.camera.position.lerp(desiredCamPos, 0.05);
     }
 
-    this.controls.update();
+    if (this.controls.enabled) {
+      this.controls.update();
+    }
     this.renderer.render(this.scene, this.camera);
   }
 

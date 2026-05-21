@@ -409,6 +409,7 @@ class SolarSystemApp {
       const cloudMesh = new THREE.Mesh(cloudGeo, cloudMat);
       
       // Match cloud squash to planet's oblate spheroid squash factor
+      const data = window.PLANET_DATA[key];
       const squashFactor = data.orbital.flattening || 1.0;
       cloudMesh.scale.set(planetSize * 1.015, planetSize * 1.015 * squashFactor, planetSize * 1.015);
       

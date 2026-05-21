@@ -27,6 +27,21 @@ class SolarSystemApp {
     this.panY = 0;
     this.isPanning = false;
     this.startPanCoords = { x: 0, y: 0 };
+    this.lastTapTime = 0;
+    this.initialTouchDistance = 0;
+    this.initialZoomScale = 1.0;
+    this.touchStartY = 0;
+    this.touchStartX = 0;
+
+    // Virtual Joysticks states
+    this.leftJoystickActive = false;
+    this.rightJoystickActive = false;
+    this.leftJoystickStart = { x: 0, y: 0 };
+    this.rightJoystickStart = { x: 0, y: 0 };
+    this.leftJoystickInput = { x: 0, y: 0 };
+    this.rightJoystickInput = { x: 0, y: 0 };
+    this.leftTouchId = null;
+    this.rightTouchId = null;
     
     // Keyboard navigation keys pressed state
     this.keysPressed = {};
@@ -85,6 +100,7 @@ class SolarSystemApp {
     // 4. Setup Interaction Controls
     this.setupControls();
     this.setupInteraction();
+    this.setupTouchControls();
     
     // 5. Bind DOM Controls UI
     this.bindHUD();
@@ -512,6 +528,19 @@ class SolarSystemApp {
     // Dot Sidebar items
     this.navItems = document.querySelectorAll('.sidebar-planet-item');
 
+    // Mobile HUD Elements
+    this.mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+    this.mobileSettingsDrawer = document.getElementById('mobile-settings-drawer');
+    this.mobileDrawerClose = document.getElementById('mobile-drawer-close');
+    this.mobileToggleOrbitsBtn = document.getElementById('mobile-toggle-orbits-btn');
+    this.mobileToggleScaleBtn = document.getElementById('mobile-toggle-scale-btn');
+    this.mobilePlayPauseBtn = document.getElementById('mobile-play-pause-btn');
+    this.mobileSpeedSlider = document.getElementById('mobile-speed-slider');
+    this.mobileSpeedVal = document.getElementById('mobile-speed-val');
+    this.mobileResetCamBtn = document.getElementById('mobile-reset-cam-btn');
+    this.mobilePlanetCarousel = document.getElementById('mobile-planet-carousel');
+    this.mobileHelpBubble = document.getElementById('mobile-help-bubble');
+
     // Event Listeners
     this.toggleOrbitsBtn.addEventListener('click', () => this.toggleOrbits());
     this.toggleScaleBtn.addEventListener('click', () => this.toggleScaleMode());
@@ -520,12 +549,68 @@ class SolarSystemApp {
     this.resetCamBtn.addEventListener('click', () => this.resetCamera());
     this.closePanelBtn.addEventListener('click', () => this.deselectPlanet());
 
+    // Toggle Mobile Drawer
+    this.mobileMenuToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.mobileSettingsDrawer.classList.add('open');
+    });
+
+    this.mobileDrawerClose.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.mobileSettingsDrawer.classList.remove('open');
+    });
+
+    // Close mobile drawer when clicking in empty space
+    window.addEventListener('click', (e) => {
+      if (this.mobileSettingsDrawer.classList.contains('open') && !this.mobileSettingsDrawer.contains(e.target) && e.target !== this.mobileMenuToggle) {
+        this.mobileSettingsDrawer.classList.remove('open');
+      }
+    });
+
+    // Mobile buttons triggering the exact same controls
+    this.mobileToggleOrbitsBtn.addEventListener('click', () => this.toggleOrbits());
+    this.mobileToggleScaleBtn.addEventListener('click', () => this.toggleScaleMode());
+    this.mobilePlayPauseBtn.addEventListener('click', () => this.togglePlayPause());
+    this.mobileSpeedSlider.addEventListener('input', (e) => this.updateSpeed(e.target.value));
+    this.mobileResetCamBtn.addEventListener('click', () => this.resetCamera());
+
     this.navItems.forEach(item => {
       item.addEventListener('click', () => {
         const planetKey = item.getAttribute('data-planet');
         this.selectPlanet(planetKey);
       });
     });
+
+    // Dynamically Generate Mobile Planet Carousel Cards
+    const carouselTrack = document.getElementById('mobile-carousel-track');
+    if (carouselTrack) {
+      carouselTrack.innerHTML = '';
+      let idx = 0;
+      for (const key in window.PLANET_DATA) {
+        const data = window.PLANET_DATA[key];
+        const card = document.createElement('div');
+        card.className = 'mobile-carousel-card';
+        card.setAttribute('data-planet', key);
+        
+        const numText = idx === 0 ? "STAR" : `SYS #${idx}`;
+        
+        card.innerHTML = `
+          <div class="carousel-planet-dot" style="background-color: ${data.color || '#fff'};"></div>
+          <div class="carousel-planet-info">
+            <span class="carousel-planet-num">${numText}</span>
+            <span class="carousel-planet-name">${data.name}</span>
+          </div>
+        `;
+        
+        card.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.selectPlanet(key);
+        });
+        
+        carouselTrack.appendChild(card);
+        idx++;
+      }
+    }
 
     // Make image transition fade smoothly on loads
     this.planetInfographicImg.addEventListener('load', () => {
@@ -607,32 +692,102 @@ class SolarSystemApp {
       }
     });
 
-    // Touch support for drag-panning on mobile
+    // Premium Touch Gestures support for Lightbox
     this.lightboxImg.addEventListener('touchstart', (e) => {
-      if (this.zoomScale > 1.0 && e.touches.length === 1) {
-        this.isPanning = true;
-        this.lightboxImg.classList.add('zoomed');
-        this.startPanCoords.x = e.touches[0].clientX - this.panX;
-        this.startPanCoords.y = e.touches[0].clientY - this.panY;
+      if (!this.lightbox.classList.contains('open')) return;
+
+      if (e.touches.length === 1) {
+        this.touchStartX = e.touches[0].clientX;
+        this.touchStartY = e.touches[0].clientY;
+        this.swipeDismissTriggered = false;
+
+        if (this.zoomScale > 1.0) {
+          this.isPanning = true;
+          this.lightboxImg.classList.add('zoomed');
+          this.startPanCoords.x = e.touches[0].clientX - this.panX;
+          this.startPanCoords.y = e.touches[0].clientY - this.panY;
+        }
+      } else if (e.touches.length === 2) {
+        // Pinch start
+        this.isPanning = false;
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        this.initialTouchDistance = Math.sqrt(dx * dx + dy * dy);
+        this.initialZoomScale = this.zoomScale;
       }
     });
 
     this.lightboxImg.addEventListener('touchmove', (e) => {
-      if (this.isPanning && e.touches.length === 1 && this.lightbox.classList.contains('open')) {
-        this.panX = e.touches[0].clientX - this.startPanCoords.x;
-        this.panY = e.touches[0].clientY - this.startPanCoords.y;
+      if (!this.lightbox.classList.contains('open')) return;
+
+      if (e.touches.length === 1 && !this.swipeDismissTriggered) {
+        if (this.zoomScale > 1.0 && this.isPanning) {
+          this.panX = e.touches[0].clientX - this.startPanCoords.x;
+          this.panY = e.touches[0].clientY - this.startPanCoords.y;
+          
+          const maxPanX = window.innerWidth * 0.45 * this.zoomScale;
+          const maxPanY = window.innerHeight * 0.45 * this.zoomScale;
+          this.panX = Math.max(Math.min(this.panX, maxPanX), -maxPanX);
+          this.panY = Math.max(Math.min(this.panY, maxPanY), -maxPanY);
+
+          this.updateLightboxTransform();
+        } else if (this.zoomScale === 1.0) {
+          // Swipe to Dismiss calculation
+          const dy = e.touches[0].clientY - this.touchStartY;
+          if (Math.abs(dy) > 100) {
+            this.swipeDismissTriggered = true;
+            this.closeLightbox();
+          }
+        }
+      } else if (e.touches.length === 2 && this.initialTouchDistance > 0) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const currentDist = Math.sqrt(dx * dx + dy * dy);
         
-        const maxPanX = window.innerWidth * 0.45 * this.zoomScale;
-        const maxPanY = window.innerHeight * 0.45 * this.zoomScale;
-        this.panX = Math.max(Math.min(this.panX, maxPanX), -maxPanX);
-        this.panY = Math.max(Math.min(this.panY, maxPanY), -maxPanY);
+        // Calculate new scale
+        const scaleChange = currentDist / this.initialTouchDistance;
+        this.zoomScale = Math.max(1.0, Math.min(this.initialZoomScale * scaleChange, 5.0));
+
+        if (this.zoomScale === 1.0) {
+          this.panX = 0;
+          this.panY = 0;
+          this.lightboxImg.classList.remove('zoomed');
+        } else {
+          this.lightboxImg.classList.add('zoomed');
+        }
 
         this.updateLightboxTransform();
       }
-    });
+    }, { passive: false });
 
-    this.lightboxImg.addEventListener('touchend', () => {
+    this.lightboxImg.addEventListener('touchend', (e) => {
       this.isPanning = false;
+      this.initialTouchDistance = 0;
+
+      // Handle double-tap zoom
+      if (e.touches.length === 0) {
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - this.lastTapTime;
+        if (tapLength < 300 && tapLength > 0) {
+          e.preventDefault();
+          if (this.zoomScale > 1.0) {
+            // Zoom out
+            this.zoomScale = 1.0;
+            this.panX = 0;
+            this.panY = 0;
+            this.lightboxImg.classList.remove('zoomed');
+          } else {
+            // Zoom in
+            this.zoomScale = 2.2;
+            this.lightboxImg.classList.add('zoomed');
+          }
+          this.updateLightboxTransform();
+          this.lastTapTime = 0;
+        } else {
+          this.lastTapTime = currentTime;
+        }
+      }
     });
   }
 
@@ -640,6 +795,11 @@ class SolarSystemApp {
     this.showOrbits = !this.showOrbits;
     this.toggleOrbitsBtn.classList.toggle('active', this.showOrbits);
     this.toggleOrbitsBtn.textContent = this.showOrbits ? 'Active' : 'Muted';
+
+    if (this.mobileToggleOrbitsBtn) {
+      this.mobileToggleOrbitsBtn.classList.toggle('active', this.showOrbits);
+      this.mobileToggleOrbitsBtn.textContent = this.showOrbits ? 'Active' : 'Muted';
+    }
 
     this.orbitLines.forEach(line => {
       line.visible = this.showOrbits;
@@ -650,6 +810,11 @@ class SolarSystemApp {
     this.scaleMode = this.scaleMode === 'visual' ? 'realistic' : 'visual';
     this.toggleScaleBtn.classList.toggle('active', this.scaleMode === 'realistic');
     this.toggleScaleBtn.textContent = this.scaleMode === 'visual' ? 'Visual' : 'Log Ratio';
+
+    if (this.mobileToggleScaleBtn) {
+      this.mobileToggleScaleBtn.classList.toggle('active', this.scaleMode === 'realistic');
+      this.mobileToggleScaleBtn.textContent = this.scaleMode === 'visual' ? 'Visual' : 'Log Ratio';
+    }
 
     // Transition distance scales and visual mesh radius multipliers
     for (const key in this.planets) {
@@ -710,11 +875,26 @@ class SolarSystemApp {
     this.isPaused = !this.isPaused;
     this.playPauseBtn.classList.toggle('active', !this.isPaused);
     this.playPauseBtn.textContent = this.isPaused ? '▶' : '⏸';
+
+    if (this.mobilePlayPauseBtn) {
+      this.mobilePlayPauseBtn.classList.toggle('active', !this.isPaused);
+      this.mobilePlayPauseBtn.textContent = this.isPaused ? '▶' : '⏸';
+    }
   }
 
   updateSpeed(val) {
     this.speedMultiplier = val / 10;
     this.speedVal.textContent = `${this.speedMultiplier.toFixed(1)}x`;
+
+    if (this.mobileSpeedSlider) {
+      this.mobileSpeedSlider.value = val;
+    }
+    if (this.mobileSpeedVal) {
+      this.mobileSpeedVal.textContent = `${this.speedMultiplier.toFixed(1)}x`;
+    }
+    if (this.speedSlider) {
+      this.speedSlider.value = val;
+    }
   }
 
   resetCamera() {
@@ -796,9 +976,29 @@ class SolarSystemApp {
       this.funFactsList.appendChild(item);
     });
 
+    // Highlight mobile carousel cards
+    const carouselCards = document.querySelectorAll('.mobile-carousel-card');
+    carouselCards.forEach(card => {
+      const match = card.getAttribute('data-planet') === key;
+      card.classList.toggle('active', match);
+      
+      // Auto-scroll the active card into view in the carousel
+      if (match) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    });
+
     // Hide instruction pill & Slide out telemetry drawer
     this.instructions.style.display = 'none';
     this.panelContainer.classList.add('open');
+
+    // Hide bottom carousel and help bubble on mobile
+    if (this.mobilePlanetCarousel) {
+      this.mobilePlanetCarousel.classList.add('hidden');
+    }
+    if (this.mobileHelpBubble) {
+      this.mobileHelpBubble.classList.add('hidden');
+    }
 
     // Trigger visual highlight ring pulses later if desired...
   }
@@ -808,6 +1008,18 @@ class SolarSystemApp {
     
     this.navItems.forEach(item => item.classList.remove('active'));
     this.panelContainer.classList.remove('open');
+    
+    // Remove active state from mobile carousel cards
+    const carouselCards = document.querySelectorAll('.mobile-carousel-card');
+    carouselCards.forEach(card => card.classList.remove('active'));
+
+    // Restore bottom carousel and help bubble on mobile
+    if (this.mobilePlanetCarousel) {
+      this.mobilePlanetCarousel.classList.remove('hidden');
+    }
+    if (this.mobileHelpBubble) {
+      this.mobileHelpBubble.classList.remove('hidden');
+    }
     
     setTimeout(() => {
       if (!this.selectedBody) {
@@ -939,6 +1151,183 @@ class SolarSystemApp {
     });
   }
 
+  setupTouchControls() {
+    this.joystickLeft = document.getElementById('joystick-left');
+    this.joystickRight = document.getElementById('joystick-right');
+    this.knobLeft = this.joystickLeft.querySelector('.joystick-knob');
+    this.knobRight = this.joystickRight.querySelector('.joystick-knob');
+
+    const isHUDTouch = (target) => {
+      if (!this.mobileSettingsDrawer || !this.mobilePlanetCarousel || !this.mobileMenuToggle || !this.panelContainer || !this.lightbox) return false;
+      return (
+        this.mobileSettingsDrawer.contains(target) || 
+        this.mobilePlanetCarousel.contains(target) || 
+        this.mobileMenuToggle.contains(target) ||
+        this.panelContainer.contains(target) ||
+        this.lightbox.contains(target)
+      );
+    };
+
+    window.addEventListener('touchstart', (e) => {
+      if (window.innerWidth > 900) return;
+
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        if (isHUDTouch(touch.target)) continue;
+
+        if (touch.clientX < window.innerWidth / 2) {
+          if (!this.leftJoystickActive) {
+            this.leftJoystickActive = true;
+            this.leftTouchId = touch.identifier;
+            this.leftJoystickStart = { x: touch.clientX, y: touch.clientY };
+            this.leftJoystickInput = { x: 0, y: 0 };
+
+            this.joystickLeft.style.left = `${touch.clientX - 50}px`;
+            this.joystickLeft.style.top = `${touch.clientY - 50}px`;
+            this.joystickLeft.style.opacity = '0.9';
+            this.knobLeft.style.transform = 'translate(0px, 0px)';
+          }
+        } else {
+          if (!this.rightJoystickActive) {
+            this.rightJoystickActive = true;
+            this.rightTouchId = touch.identifier;
+            this.rightJoystickStart = { x: touch.clientX, y: touch.clientY };
+            this.rightJoystickInput = { x: 0, y: 0 };
+
+            this.joystickRight.style.left = `${touch.clientX - 50}px`;
+            this.joystickRight.style.top = `${touch.clientY - 50}px`;
+            this.joystickRight.style.opacity = '0.9';
+            this.knobRight.style.transform = 'translate(0px, 0px)';
+          }
+        }
+      }
+    });
+
+    window.addEventListener('touchmove', (e) => {
+      if (window.innerWidth > 900) return;
+
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+
+        if (this.leftJoystickActive && touch.identifier === this.leftTouchId) {
+          const deltaX = touch.clientX - this.leftJoystickStart.x;
+          const deltaY = touch.clientY - this.leftJoystickStart.y;
+          const dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+          
+          let dx = deltaX;
+          let dy = deltaY;
+          if (dist > 40) {
+            dx = (deltaX / dist) * 40;
+            dy = (deltaY / dist) * 40;
+          }
+
+          this.knobLeft.style.transform = `translate(${dx}px, ${dy}px)`;
+          this.leftJoystickInput = { x: dx / 40, y: dy / 40 };
+        } else if (this.rightJoystickActive && touch.identifier === this.rightTouchId) {
+          const deltaX = touch.clientX - this.rightJoystickStart.x;
+          const deltaY = touch.clientY - this.rightJoystickStart.y;
+          const dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+          
+          let dx = deltaX;
+          let dy = deltaY;
+          if (dist > 40) {
+            dx = (deltaX / dist) * 40;
+            dy = (deltaY / dist) * 40;
+          }
+
+          this.knobRight.style.transform = `translate(${dx}px, ${dy}px)`;
+          this.rightJoystickInput = { x: dx / 40, y: dy / 40 };
+        }
+      }
+    });
+
+    const endJoystickTouch = (touch) => {
+      if (this.leftJoystickActive && touch.identifier === this.leftTouchId) {
+        this.leftJoystickActive = false;
+        this.leftTouchId = null;
+        this.leftJoystickInput = { x: 0, y: 0 };
+        this.joystickLeft.style.opacity = '0';
+        this.knobLeft.style.transform = 'translate(0px, 0px)';
+      } else if (this.rightJoystickActive && touch.identifier === this.rightTouchId) {
+        this.rightJoystickActive = false;
+        this.rightTouchId = null;
+        this.rightJoystickInput = { x: 0, y: 0 };
+        this.joystickRight.style.opacity = '0';
+        this.knobRight.style.transform = 'translate(0px, 0px)';
+      }
+    };
+
+    window.addEventListener('touchend', (e) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        endJoystickTouch(e.changedTouches[i]);
+      }
+    });
+
+    window.addEventListener('touchcancel', (e) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        endJoystickTouch(e.changedTouches[i]);
+      }
+    });
+  }
+
+  handleJoystickNavigation() {
+    if (window.innerWidth > 900) return;
+
+    if (this.leftJoystickActive && (this.leftJoystickInput.x !== 0 || this.leftJoystickInput.y !== 0)) {
+      if (this.selectedBody) {
+        this.deselectPlanet();
+      }
+
+      const forward = new THREE.Vector3();
+      this.camera.getWorldDirection(forward);
+      forward.y = 0;
+      forward.normalize();
+
+      const right = new THREE.Vector3();
+      right.crossVectors(forward, new THREE.Vector3(0, 1, 0));
+      right.y = 0;
+      right.normalize();
+
+      const moveDirection = new THREE.Vector3();
+      moveDirection.addScaledVector(forward, -this.leftJoystickInput.y);
+      moveDirection.addScaledVector(right, this.leftJoystickInput.x);
+      
+      if (moveDirection.lengthSq() > 0.0001) {
+        moveDirection.normalize();
+      }
+
+      const distance = this.camera.position.distanceTo(this.controls.target);
+      const panSpeed = Math.max(0.4, distance * 0.015) * 0.8;
+
+      const movement = moveDirection.multiplyScalar(panSpeed);
+      this.controls.target.add(movement);
+      this.camera.position.add(movement);
+
+      if (this.controls.target.length() > 600) {
+        const excess = this.controls.target.clone().setLength(600).sub(this.controls.target);
+        this.controls.target.add(excess);
+        this.camera.position.add(excess);
+      }
+    }
+
+    if (this.rightJoystickActive && (this.rightJoystickInput.x !== 0 || this.rightJoystickInput.y !== 0)) {
+      if (this.selectedBody) {
+        this.deselectPlanet();
+      }
+
+      const offset = new THREE.Vector3().subVectors(this.camera.position, this.controls.target);
+      const spherical = new THREE.Spherical().setFromVector3(offset);
+      
+      spherical.theta -= this.rightJoystickInput.x * 0.04;
+      spherical.phi = THREE.MathUtils.clamp(spherical.phi - this.rightJoystickInput.y * 0.04, 0.1, Math.PI / 2 - 0.05);
+      
+      spherical.makeSafe();
+      
+      offset.setFromSpherical(spherical);
+      this.camera.position.copy(this.controls.target).add(offset);
+    }
+  }
+
   // --- Animation loop ---
 
   animate() {
@@ -946,6 +1335,9 @@ class SolarSystemApp {
 
     // Handle WASD / Arrow keyboard navigation bounded to the solar system grid
     this.handleKeyboardNavigation();
+
+    // Handle touch-screen joystick navigation
+    this.handleJoystickNavigation();
 
     // Update orbit positions (only if not paused)
     if (!this.isPaused) {
@@ -1063,5 +1455,5 @@ class SolarSystemApp {
 
 // Instantiate on loads
 window.addEventListener('DOMContentLoaded', () => {
-  new SolarSystemApp();
+  window.app = new SolarSystemApp();
 });

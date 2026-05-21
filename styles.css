@@ -793,43 +793,259 @@ body, html {
   cursor: zoom-in;
 }
 
+/* Update main panel infographic cursor to indicate zoomability */
+.infographic-image-wrap {
+  cursor: zoom-in;
+}
+
+/* --- Mobile HUD & Joystick Elements Hidden on Desktop by Default --- */
+#mobile-menu-toggle,
+.mobile-hud-drawer,
+.mobile-carousel-container,
+.mobile-help-bubble,
+.virtual-joystick-container {
+  display: none;
+}
+
 /* Mobile responsive adjustments */
 @media (max-width: 900px) {
   .hud-layer {
-    grid-template-columns: 60px 1fr;
-    grid-template-rows: 70px 1fr 1fr;
+    grid-template-columns: 1fr;
+    grid-template-rows: 70px 1fr;
     padding: 10px;
+    height: 100%;
   }
-  
+
   .hud-topbar {
-    grid-column: 1 / 3;
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     padding: 0 15px;
   }
 
   .hud-logo {
-    font-size: 1rem;
+    font-size: 1.1rem;
   }
-  
+
   .hud-version {
     display: none;
   }
-  
-  .control-group {
-    padding-right: 10px;
-    gap: 5px;
-  }
-  
-  .hud-slider {
-    width: 60px;
+
+  /* Hide Desktop specific items */
+  .hud-controls,
+  #planet-nav-menu,
+  .hud-instructions {
+    display: none !important;
   }
 
-  .hud-sidebar {
-    grid-row: 2 / 4;
+  /* Show Mobile Menu Toggles */
+  #mobile-menu-toggle {
+    display: flex;
+    font-size: 0.75rem;
+    padding: 8px 14px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
   }
-  
+
+  /* Glassmorphic Side Drawer Styles */
+  .mobile-hud-drawer {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 280px;
+    height: 100vh;
+    background: rgba(8, 8, 18, 0.85);
+    border-left: 1px solid var(--border-glow);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    z-index: 1600;
+    padding: 30px 20px;
+    transform: translateX(100%);
+    transition: transform var(--transition-speed) var(--transition-bezier);
+    pointer-events: auto;
+    box-shadow: -10px 0 30px rgba(0,0,0,0.7);
+  }
+
+  .mobile-hud-drawer.open {
+    transform: translateX(0);
+  }
+
+  .drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(0, 243, 255, 0.2);
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+  }
+
+  .drawer-header h3 {
+    font-size: 0.9rem;
+    letter-spacing: 1px;
+  }
+
+  .drawer-content {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+  }
+
+  .mobile-control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .mobile-control-group .control-label {
+    font-family: var(--font-hud);
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .mobile-control-group .hud-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 10px;
+  }
+
+  .full-width-btn {
+    width: 100%;
+    justify-content: center;
+    margin-top: 15px;
+    padding: 12px;
+  }
+
+  /* Bottom Horizontal Planet Carousel */
+  .mobile-carousel-container {
+    display: block;
+    position: fixed;
+    bottom: 20px;
+    left: 0;
+    width: 100%;
+    height: 90px;
+    z-index: 900;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    padding: 0 20px;
+    pointer-events: auto;
+    scrollbar-width: none; /* Hide default scrollbar */
+    transition: transform var(--transition-speed) var(--transition-bezier);
+  }
+
+  .mobile-carousel-container.hidden {
+    transform: translateY(150px);
+    pointer-events: none;
+  }
+
+  .mobile-carousel-container::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mobile-carousel-track {
+    display: inline-flex;
+    gap: 12px;
+    padding-bottom: 10px;
+  }
+
+  .mobile-carousel-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-glow);
+    padding: 10px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: all 0.3s var(--transition-bezier);
+  }
+
+  .mobile-carousel-card.active {
+    border-color: var(--cyan-neon);
+    box-shadow: 0 0 12px rgba(0, 243, 255, 0.4);
+    background: rgba(0, 243, 255, 0.05);
+  }
+
+  .carousel-planet-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    box-shadow: 0 0 6px rgba(255,255,255,0.3);
+  }
+
+  .carousel-planet-info {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .carousel-planet-num {
+    font-size: 0.55rem;
+    font-family: var(--font-hud);
+    color: var(--cyan-neon);
+    letter-spacing: 1px;
+  }
+
+  .carousel-planet-name {
+    font-size: 0.8rem;
+    font-family: var(--font-hud);
+    font-weight: bold;
+    color: var(--text-primary);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* Help Floating Bubble */
+  .mobile-help-bubble {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: fixed;
+    bottom: 125px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(3, 3, 8, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    padding: 8px 16px;
+    border-radius: 20px;
+    z-index: 850;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+
+  .mobile-help-bubble.hidden {
+    opacity: 0;
+  }
+
+  .mobile-help-bubble span {
+    font-family: var(--font-hud);
+    font-size: 0.6rem;
+    letter-spacing: 1px;
+    color: var(--text-secondary);
+  }
+
+  .pulse-dot {
+    width: 6px;
+    height: 6px;
+    background-color: var(--cyan-neon);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--cyan-neon);
+    animation: pulse 1.5s infinite;
+  }
+
+  /* Bottom sheet behavior for planet telemetry panel on mobile */
   .hud-panel-container {
-    grid-column: 1 / 3;
-    grid-row: 3;
+    grid-column: 1 / -1;
+    grid-row: 2;
     position: fixed;
     bottom: 0;
     left: 0;
@@ -837,13 +1053,75 @@ body, html {
     height: 60vh;
     margin-top: 0;
     transform: translateY(100%);
+    transition: transform var(--transition-speed) var(--transition-bezier);
+    pointer-events: none;
+    z-index: 1300;
   }
 
   .hud-panel-container.open {
     transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  .hud-panel {
+    border-radius: 12px 12px 0 0;
+    border-bottom: none;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.7);
+  }
+
+  /* Hidden Joysticks styles */
+  .virtual-joystick-container {
+    display: block;
+    position: fixed;
+    width: 100px;
+    height: 100px;
+    z-index: 1500;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.25s ease-out;
+  }
+
+  .joystick-ring {
+    width: 80px;
+    height: 80px;
+    border: 2px solid var(--cyan-neon);
+    border-radius: 50%;
+    background: rgba(10, 10, 20, 0.4);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    box-shadow: 0 0 15px rgba(0, 243, 255, 0.15), inset 0 0 15px rgba(0, 243, 255, 0.15);
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .joystick-ring::before,
+  .joystick-ring::after {
+    content: '';
+    position: absolute;
+    background: rgba(0, 243, 255, 0.3);
   }
   
-  .hud-instructions {
-    display: none;
+  .joystick-ring::before {
+    width: 100%;
+    height: 1px;
+  }
+  
+  .joystick-ring::after {
+    height: 100%;
+    width: 1px;
+  }
+
+  .joystick-knob {
+    width: 32px;
+    height: 32px;
+    background: radial-gradient(circle at center, #ffffff 0%, var(--cyan-neon) 100%);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--cyan-neon);
+    position: absolute;
+    transition: transform 0.05s ease-out;
+    z-index: 1510;
   }
 }
+

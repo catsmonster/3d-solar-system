@@ -68,6 +68,7 @@
         <!-- Reset Camera -->
         <button id="reset-cam-btn" class="hud-btn">🌌 Reset Grid</button>
       </div>
+      <button id="mobile-menu-toggle" class="hud-btn mobile-only" title="Open HUD Controls">⚙️ CONTROLS</button>
     </header>
 
     <!-- Sidebar: Fast planetary navigation dots -->
@@ -160,6 +161,58 @@
           <div class="fun-fact-item">One million Earths could fit inside the Sun if it were hollow.</div>
         </div>
       </section>
+    </div>
+
+    <!-- Mobile HUD Settings Drawer Overlay -->
+    <div id="mobile-settings-drawer" class="mobile-hud-drawer">
+      <div class="drawer-header">
+        <h3 class="hud-logo">HUD SYSTEM SETTINGS</h3>
+        <button id="mobile-drawer-close" class="close-btn" title="Close Panel">✕</button>
+      </div>
+      <div class="drawer-content">
+        <div class="mobile-control-group">
+          <span class="control-label">Orbits Stream:</span>
+          <button id="mobile-toggle-orbits-btn" class="hud-btn">Active</button>
+        </div>
+        <div class="mobile-control-group">
+          <span class="control-label">Visual Ratio:</span>
+          <button id="mobile-toggle-scale-btn" class="hud-btn">Visual</button>
+        </div>
+        <div class="mobile-control-group">
+          <span class="control-label">Speed Factor:</span>
+          <div class="hud-slider-container">
+            <button id="mobile-play-pause-btn" class="hud-btn active">⏸</button>
+            <input type="range" id="mobile-speed-slider" class="hud-slider" min="0" max="50" value="10">
+            <span id="mobile-speed-val" class="hud-slider-val">1.0x</span>
+          </div>
+        </div>
+        <button id="mobile-reset-cam-btn" class="hud-btn full-width-btn">🌌 Reset Grid</button>
+      </div>
+    </div>
+
+    <!-- Mobile Planet Selection Carousel -->
+    <div id="mobile-planet-carousel" class="mobile-carousel-container">
+      <div class="mobile-carousel-track" id="mobile-carousel-track">
+        <!-- Dynamically generated in app.js for planetary items -->
+      </div>
+    </div>
+
+    <!-- Mobile Floating Helper Bubble -->
+    <div id="mobile-help-bubble" class="mobile-help-bubble">
+      <div class="pulse-dot"></div>
+      <span>SWIPE SPACE OR TAP PLANET TO DISCOVER</span>
+    </div>
+
+    <!-- Virtual Touch Screen Joysticks -->
+    <div id="joystick-left" class="virtual-joystick-container">
+      <div class="joystick-ring">
+        <div class="joystick-knob"></div>
+      </div>
+    </div>
+    <div id="joystick-right" class="virtual-joystick-container">
+      <div class="joystick-ring">
+        <div class="joystick-knob"></div>
+      </div>
     </div>
 
   </div>

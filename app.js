@@ -1308,20 +1308,18 @@ class SolarSystemApp {
         this.deselectPlanet();
       }
 
+      // Full 3D forward — follows wherever the camera is looking, including up/down pitch
       const forward = new THREE.Vector3();
       this.camera.getWorldDirection(forward);
-      forward.y = 0;
-      forward.normalize();
 
+      // Right vector: cross of forward with world-up keeps strafing horizontal
       const right = new THREE.Vector3();
-      right.crossVectors(forward, new THREE.Vector3(0, 1, 0));
-      right.y = 0;
-      right.normalize();
+      right.crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
 
       const moveDirection = new THREE.Vector3();
       moveDirection.addScaledVector(forward, -this.leftJoystickInput.y);
       moveDirection.addScaledVector(right, this.leftJoystickInput.x);
-      
+
       if (moveDirection.lengthSq() > 0.0001) {
         moveDirection.normalize();
       }

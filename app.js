@@ -32,28 +32,62 @@ class SolarSystemApp {
   }
 
   async init() {
-    // 1. Setup Three.js Boilerplate
+    // 1. Setup Loading Manager and Texture Loader
+    this.loadingSubtext = document.querySelector('#loader-overlay .loader-subtext');
+    this.loadingManager = new THREE.LoadingManager();
+    
+    this.loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
+      const percentage = Math.round((itemsLoaded / itemsTotal) * 100);
+      if (this.loadingSubtext) {
+        this.loadingSubtext.textContent = `Loading Celestial Textures: ${percentage}%`;
+      }
+    };
+    
+    this.loadingManager.onLoad = () => {
+      if (this.loadingSubtext) {
+        this.loadingSubtext.textContent = `System Calibration Complete.`;
+      }
+      setTimeout(() => {
+        if (this.loader) {
+          this.loader.classList.add('fade-out');
+        }
+      }, 500);
+    };
+
+    this.loadingManager.onError = (url) => {
+      console.warn(`Error loading texture: ${url}`);
+    };
+
+    this.textureLoader = new THREE.TextureLoader(this.loadingManager);
+
+    // Safety timeout: guarantee scene fades in even if a texture fails to resolve
+    setTimeout(() => {
+      if (this.loader && !this.loader.classList.contains('fade-out')) {
+        console.log('Safety timeout triggered - forcing fade-in');
+        if (this.loadingSubtext) {
+          this.loadingSubtext.textContent = `System Calibration Complete.`;
+        }
+        this.loader.classList.add('fade-out');
+      }
+    }, 8000);
+
+    // 2. Setup Three.js Boilerplate
     this.createScene();
     this.createLighting();
     this.createStarfield();
     
-    // 2. Generate Sun & Planets
+    // 3. Generate Sun & Planets
     this.createSolarSystem();
     
-    // 3. Setup Interaction Controls
+    // 4. Setup Interaction Controls
     this.setupControls();
     this.setupInteraction();
     
-    // 4. Bind DOM Controls UI
+    // 5. Bind DOM Controls UI
     this.bindHUD();
     
-    // 5. Start Render Animation Loop
+    // 6. Start Render Animation Loop
     this.animate();
-    
-    // 6. Fade out loading screen
-    setTimeout(() => {
-      this.loader.classList.add('fade-out');
-    }, 1500);
   }
 
   createScene() {
@@ -223,30 +257,7 @@ class SolarSystemApp {
   // --- High-fidelity Procedural Texturing System ---
 
   createSunMaterial() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 256;
-    const ctx = canvas.getContext('2d');
-
-    // Sun solar flare pattern
-    const grad = ctx.createLinearGradient(0, 0, 512, 0);
-    grad.addColorStop(0, '#ff3300');
-    grad.addColorStop(0.3, '#ffaa00');
-    grad.addColorStop(0.5, '#ffee99');
-    grad.addColorStop(0.7, '#ffaa00');
-    grad.addColorStop(1, '#ff3300');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 512, 256);
-
-    // Add organic noise flares on top
-    for (let i = 0; i < 400; i++) {
-      ctx.fillStyle = `rgba(255, ${100 + Math.random() * 155}, 0, ${0.1 + Math.random() * 0.15})`;
-      const w = 5 + Math.random() * 30;
-      const h = 5 + Math.random() * 30;
-      ctx.fillRect(Math.random() * 512, Math.random() * 256, w, h);
-    }
-
-    const texture = new THREE.CanvasTexture(canvas);
+    const texture = this.textureLoader.load('./assets/sun_texture.png');
     return new THREE.MeshBasicMaterial({
       map: texture,
       color: 0xffffff
@@ -254,148 +265,91 @@ class SolarSystemApp {
   }
 
   createPlanetMaterial(key, hexColor) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 256;
-    const ctx = canvas.getContext('2d');
-
-    // Create planetary stripes/features procedurally
-    ctx.fillStyle = hexColor;
-    ctx.fillRect(0, 0, 512, 256);
-
-    const baseColor = new THREE.Color(hexColor);
-
-    if (key === 'mercury') {
-      // Highly cratered gray surface
-      for (let i = 0; i < 600; i++) {
-        const val = Math.floor(60 + Math.random() * 80);
-        ctx.fillStyle = `rgba(${val}, ${val}, ${val + 10}, ${0.15 + Math.random() * 0.25})`;
-        ctx.beginPath();
-        ctx.arc(Math.random() * 512, Math.random() * 256, 1 + Math.random() * 10, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    } 
-    else if (key === 'venus') {
-      // Swirling toxic yellow-orange greenhouse bands
-      for (let i = 0; i < 20; i++) {
-        ctx.fillStyle = `rgba(${255}, ${200 + Math.random() * 55}, ${50 + Math.random() * 100}, 0.2)`;
-        ctx.beginPath();
-        const y = Math.random() * 256;
-        ctx.ellipse(Math.random() * 512, y, 100 + Math.random() * 200, 10 + Math.random() * 35, Math.random() * 0.2 - 0.1, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    } 
-    else if (key === 'earth') {
-      // Beautiful continents mapping
-      // Blue background
-      ctx.fillStyle = '#0f3c80';
-      ctx.fillRect(0, 0, 512, 256);
+    let texture;
+    
+    // Check if we have generated texture assets for this planet
+    const texturedPlanets = ['mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn'];
+    
+    if (texturedPlanets.includes(key)) {
+      texture = this.textureLoader.load(`./assets/${key}_texture.png`);
+    } else {
+      // Fallback/procedural high-fidelity textures for Uranus and Neptune
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
       
-      // Draw green/brown land blobs
-      ctx.fillStyle = '#227845';
-      const continents = 15;
-      for (let c = 0; c < continents; c++) {
-        const cx = Math.random() * 512;
-        const cy = 40 + Math.random() * 176;
-        const cr = 20 + Math.random() * 60;
+      if (key === 'uranus') {
+        // Soft cyan horizontal atmospheric bands
+        const gradStripe = ctx.createLinearGradient(0, 0, 0, 256);
+        gradStripe.addColorStop(0, '#bbf2f6');
+        gradStripe.addColorStop(0.3, '#9ce8ed');
+        gradStripe.addColorStop(0.6, '#7cdfe5');
+        gradStripe.addColorStop(1, '#56cbd1');
+        ctx.fillStyle = gradStripe;
+        ctx.fillRect(0, 0, 512, 256);
         
-        ctx.beginPath();
-        ctx.arc(cx, cy, cr, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Organic sub-blobs for coastlines
-        ctx.fillStyle = '#2b8a4f';
+        // Faint planetary atmospheric rings/glow bands on texture
         for (let i = 0; i < 6; i++) {
-          ctx.beginPath();
-          ctx.arc(cx + (Math.random() * cr - cr/2), cy + (Math.random() * cr - cr/2), cr * 0.6, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+          ctx.fillRect(0, Math.random() * 256, 512, 10 + Math.random() * 20);
         }
-      }
-    } 
-    else if (key === 'mars') {
-      // Rusty red with craters & white poles
-      ctx.fillStyle = '#aa3c1c';
-      ctx.fillRect(0, 0, 512, 256);
+      } 
+      else if (key === 'neptune') {
+        // Cobalt blue with dynamic bands and darker storm spots
+        const gradStripe = ctx.createLinearGradient(0, 0, 0, 256);
+        gradStripe.addColorStop(0, '#2d4d9c');
+        gradStripe.addColorStop(0.3, '#1c3673');
+        gradStripe.addColorStop(0.7, '#102454');
+        gradStripe.addColorStop(1, '#061330');
+        ctx.fillStyle = gradStripe;
+        ctx.fillRect(0, 0, 512, 256);
 
-      // Dark volcanic valleys
-      for (let i = 0; i < 15; i++) {
-        ctx.fillStyle = 'rgba(70, 15, 5, 0.4)';
+        // Swirling thin white methane cloud lines (supersonic winds)
+        for (let i = 0; i < 8; i++) {
+          ctx.strokeStyle = 'rgba(200, 240, 255, 0.15)';
+          ctx.lineWidth = 1 + Math.random() * 2;
+          ctx.beginPath();
+          const y = 30 + Math.random() * 196;
+          ctx.moveTo(0, y);
+          ctx.bezierCurveTo(128, y - 10 + Math.random() * 20, 384, y - 10 + Math.random() * 20, 512, y);
+          ctx.stroke();
+        }
+
+        // Great Dark Spot storm
+        ctx.fillStyle = '#030a21';
         ctx.beginPath();
-        ctx.ellipse(Math.random() * 512, 100 + Math.random() * 80, 20 + Math.random() * 80, 5 + Math.random() * 20, 0.4, 0, Math.PI * 2);
+        ctx.ellipse(140, 100, 22, 12, 0.1, 0, Math.PI * 2);
         ctx.fill();
+        ctx.strokeStyle = 'rgba(0, 243, 255, 0.15)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else {
+        // Default block fallback color just in case
+        ctx.fillStyle = hexColor;
+        ctx.fillRect(0, 0, 512, 256);
       }
-
-      // White polar caps
-      ctx.fillStyle = 'rgba(250, 250, 255, 0.9)';
-      ctx.fillRect(0, 0, 512, 25);
-      ctx.fillRect(0, 235, 512, 21);
-    } 
-    else if (key === 'jupiter') {
-      // Intense atmospheric bands & red spot
-      const stripeCount = 28;
-      for (let i = 0; i < stripeCount; i++) {
-        const mixRatio = Math.random();
-        ctx.fillStyle = mixRatio < 0.35 ? '#d9ab7e' : mixRatio < 0.7 ? '#8a5c37' : '#f0e0cc';
-        const h = 5 + Math.random() * 20;
-        ctx.fillRect(0, i * (256/stripeCount), 512, h);
-      }
-
-      // Draw the legendary Great Red Spot
-      ctx.fillStyle = '#b52f1b';
-      ctx.beginPath();
-      ctx.ellipse(320, 175, 24, 14, 0, 0, Math.PI * 2);
-      ctx.fill();
       
-      // Halo storm bounds
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-      ctx.stroke();
-    } 
-    else if (key === 'saturn') {
-      // Muted beige stripes
-      const stripeCount = 18;
-      for (let i = 0; i < stripeCount; i++) {
-        ctx.fillStyle = Math.random() > 0.4 ? '#dfc8a5' : '#c8ac83';
-        const h = 8 + Math.random() * 25;
-        ctx.fillRect(0, i * (256/stripeCount), 512, h);
-      }
-    } 
-    else if (key === 'uranus') {
-      // Soft cyan gradient
-      const gradStripe = ctx.createLinearGradient(0, 0, 0, 256);
-      gradStripe.addColorStop(0, '#bbf2f6');
-      gradStripe.addColorStop(0.5, '#8be2e8');
-      gradStripe.addColorStop(1, '#66cbd1');
-      ctx.fillStyle = gradStripe;
-      ctx.fillRect(0, 0, 512, 256);
-    } 
-    else if (key === 'neptune') {
-      // Cobalt blue with dynamic bands and darker storm spots
-      const gradStripe = ctx.createLinearGradient(0, 0, 0, 256);
-      gradStripe.addColorStop(0, '#2d4d9c');
-      gradStripe.addColorStop(0.5, '#1e3878');
-      gradStripe.addColorStop(1, '#0e2352');
-      ctx.fillStyle = gradStripe;
-      ctx.fillRect(0, 0, 512, 256);
-
-      // Faint glowing cyan storm bands
-      for (let i = 0; i < 4; i++) {
-        ctx.fillStyle = 'rgba(0, 243, 255, 0.08)';
-        ctx.fillRect(0, 40 + Math.random() * 150, 512, 6 + Math.random() * 15);
-      }
-
-      // Dark Spot storm
-      ctx.fillStyle = '#061130';
-      ctx.beginPath();
-      ctx.ellipse(140, 100, 20, 11, 0.1, 0, Math.PI * 2);
-      ctx.fill();
+      texture = new THREE.CanvasTexture(canvas);
     }
-
-    const texture = new THREE.CanvasTexture(canvas);
+    
+    // Set appropriate roughness/metalness parameters per planet type to look extremely premium!
+    let roughness = 0.85;
+    let metalness = 0.05;
+    
+    if (key === 'earth') {
+      roughness = 0.4;  // oceans are shiny
+      metalness = 0.1;
+    } else if (key === 'venus') {
+      roughness = 0.9;  // very thick gas
+    } else if (key === 'jupiter' || key === 'saturn') {
+      roughness = 0.75; // gas giant soft sheen
+    }
+    
     const mat = new THREE.MeshStandardMaterial({
       map: texture,
-      roughness: 0.85,
-      metalness: 0.05
+      roughness: roughness,
+      metalness: metalness
     });
 
     return mat;

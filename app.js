@@ -1318,17 +1318,29 @@ class SolarSystemApp {
         this.deselectPlanet();
       }
 
-      const offset = new THREE.Vector3().subVectors(this.camera.position, this.controls.target);
-      const spherical = new THREE.Spherical().setFromVector3(offset);
+      // 1. Get the camera's current unit forward look direction
+      const forward = new THREE.Vector3();
+      this.camera.getWorldDirection(forward);
+
+      // 2. Convert forward vector to spherical coordinates
+      const spherical = new THREE.Spherical().setFromVector3(forward);
       
-      // Cinematic, dampened rotation speed
-      spherical.theta -= this.rightJoystickInput.x * 0.018;
-      spherical.phi = THREE.MathUtils.clamp(spherical.phi - this.rightJoystickInput.y * 0.018, 0.1, Math.PI / 2 - 0.05);
+      // 3. Update yaw (theta) and pitch (phi) based on joystick displacement
+      // Joystick X translates to Yaw (horizontal looking around Y-axis)
+      spherical.theta += this.rightJoystickInput.x * 0.025;
+      
+      // Joystick Y translates to Pitch (vertical looking up/down). Clamp to prevent look flipping / gimbal lock.
+      spherical.phi = THREE.MathUtils.clamp(spherical.phi + this.rightJoystickInput.y * 0.025, 0.05, Math.PI - 0.05);
       
       spherical.makeSafe();
       
-      offset.setFromSpherical(spherical);
-      this.camera.position.copy(this.controls.target).add(offset);
+      // 4. Convert unit spherical back to a look direction vector
+      const newForward = new THREE.Vector3().setFromSpherical(spherical);
+      
+      // 5. Update OrbitControls target to be directly in front of the camera
+      // Keep the current camera-to-target distance to maintain focus and zoom scale
+      const distance = this.camera.position.distanceTo(this.controls.target);
+      this.controls.target.copy(this.camera.position).addScaledVector(newForward, distance);
     }
   }
 

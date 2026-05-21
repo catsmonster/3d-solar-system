@@ -1296,8 +1296,11 @@ class SolarSystemApp {
         moveDirection.normalize();
       }
 
+      // True analog input force scaling
+      const inputLength = Math.min(1.0, Math.sqrt(this.leftJoystickInput.x * this.leftJoystickInput.x + this.leftJoystickInput.y * this.leftJoystickInput.y));
+
       const distance = this.camera.position.distanceTo(this.controls.target);
-      const panSpeed = Math.max(0.4, distance * 0.015) * 0.8;
+      const panSpeed = Math.max(0.4, distance * 0.015) * 0.35 * inputLength;
 
       const movement = moveDirection.multiplyScalar(panSpeed);
       this.controls.target.add(movement);
@@ -1318,8 +1321,9 @@ class SolarSystemApp {
       const offset = new THREE.Vector3().subVectors(this.camera.position, this.controls.target);
       const spherical = new THREE.Spherical().setFromVector3(offset);
       
-      spherical.theta -= this.rightJoystickInput.x * 0.04;
-      spherical.phi = THREE.MathUtils.clamp(spherical.phi - this.rightJoystickInput.y * 0.04, 0.1, Math.PI / 2 - 0.05);
+      // Cinematic, dampened rotation speed
+      spherical.theta -= this.rightJoystickInput.x * 0.018;
+      spherical.phi = THREE.MathUtils.clamp(spherical.phi - this.rightJoystickInput.y * 0.018, 0.1, Math.PI / 2 - 0.05);
       
       spherical.makeSafe();
       
@@ -1327,6 +1331,7 @@ class SolarSystemApp {
       this.camera.position.copy(this.controls.target).add(offset);
     }
   }
+
 
   // --- Animation loop ---
 

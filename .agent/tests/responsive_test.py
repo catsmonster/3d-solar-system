@@ -47,10 +47,7 @@ def run_tests():
         
     # 4. Click mobile menu toggle to open HUD controls drawer
     print("Opening Mobile Settings Drawer...")
-    rect = js("document.getElementById('mobile-menu-toggle').getBoundingClientRect().toJSON()")
-    click_x = rect['left'] + rect['width'] / 2
-    click_y = rect['top'] + rect['height'] / 2
-    click_at_xy(click_x, click_y)
+    js("document.getElementById('mobile-menu-toggle').click()")
     wait(1.0)
     
     capture_screenshot(os.path.join(screenshot_dir, "02_mobile_drawer_open.png"))
@@ -62,8 +59,7 @@ def run_tests():
         
     # 5. Synchronized state testing: Toggle Orbits in Mobile Drawer
     print("Toggling Orbits off in Mobile Drawer...")
-    orbits_btn_rect = js("document.getElementById('mobile-toggle-orbits-btn').getBoundingClientRect().toJSON()")
-    click_at_xy(orbits_btn_rect['left'] + orbits_btn_rect['width'] / 2, orbits_btn_rect['top'] + orbits_btn_rect['height'] / 2)
+    js("document.getElementById('mobile-toggle-orbits-btn').click()")
     wait(0.5)
     
     orbits_mode = js("document.getElementById('mobile-toggle-orbits-btn').textContent.trim()")
@@ -75,8 +71,7 @@ def run_tests():
         
     # Close mobile drawer
     print("Closing Mobile Settings Drawer...")
-    close_btn_rect = js("document.getElementById('mobile-drawer-close').getBoundingClientRect().toJSON()")
-    click_at_xy(close_btn_rect['left'] + close_btn_rect['width'] / 2, close_btn_rect['top'] + close_btn_rect['height'] / 2)
+    js("document.getElementById('mobile-drawer-close').click()")
     wait(1.0)
     
     is_drawer_open = js("document.getElementById('mobile-settings-drawer').classList.contains('open')")
@@ -96,8 +91,7 @@ def run_tests():
         
     # 7. Click telemetry infographic to open Lightbox
     print("Opening Infographic Lightbox...")
-    infographic_rect = js("document.getElementById('planet-infographic-img').getBoundingClientRect().toJSON()")
-    click_at_xy(infographic_rect['left'] + infographic_rect['width'] / 2, infographic_rect['top'] + infographic_rect['height'] / 2)
+    js("document.getElementById('planet-infographic-img').click()")
     wait(1.5)
     
     capture_screenshot(os.path.join(screenshot_dir, "04_mobile_lightbox_open.png"))

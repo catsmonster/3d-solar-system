@@ -24,7 +24,8 @@ const PLANET_DATA = {
       period: 0,
       speed: 0,
       size: 25, // Visual scale radius
-      semiMajor: 0
+      semiMajor: 0,
+      flattening: 1.0
     }
   },
   mercury: {
@@ -52,7 +53,8 @@ const PLANET_DATA = {
       period: 88,
       speed: 0.04,
       size: 2.2,
-      semiMajor: 0.39
+      semiMajor: 0.39,
+      flattening: 1.0
     }
   },
   venus: {
@@ -80,7 +82,8 @@ const PLANET_DATA = {
       period: 224.7,
       speed: 0.015,
       size: 4.8,
-      semiMajor: 0.72
+      semiMajor: 0.72,
+      flattening: 1.0
     }
   },
   earth: {
@@ -108,7 +111,8 @@ const PLANET_DATA = {
       period: 365.25,
       speed: 0.01,
       size: 5.0,
-      semiMajor: 1.0
+      semiMajor: 1.0,
+      flattening: 0.997
     }
   },
   mars: {
@@ -136,7 +140,8 @@ const PLANET_DATA = {
       period: 687,
       speed: 0.008,
       size: 3.2,
-      semiMajor: 1.52
+      semiMajor: 1.52,
+      flattening: 0.994
     }
   },
   jupiter: {
@@ -164,7 +169,8 @@ const PLANET_DATA = {
       period: 4333,
       speed: 0.004,
       size: 11.5,
-      semiMajor: 5.20
+      semiMajor: 5.20,
+      flattening: 0.935
     }
   },
   saturn: {
@@ -192,7 +198,8 @@ const PLANET_DATA = {
       period: 10759,
       speed: 0.002,
       size: 9.8,
-      semiMajor: 9.58
+      semiMajor: 9.58,
+      flattening: 0.902
     }
   },
   uranus: {
@@ -220,7 +227,8 @@ const PLANET_DATA = {
       period: 30687,
       speed: 0.001,
       size: 7.2,
-      semiMajor: 19.20
+      semiMajor: 19.20,
+      flattening: 0.977
     }
   },
   neptune: {
@@ -248,7 +256,8 @@ const PLANET_DATA = {
       period: 60190,
       speed: 0.0007,
       size: 7.0,
-      semiMajor: 30.05
+      semiMajor: 30.05,
+      flattening: 0.983
     }
   }
 };

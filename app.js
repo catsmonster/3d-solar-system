@@ -207,7 +207,10 @@ class SolarSystemApp {
       bodyGroup.name = key;
 
       // Create core planetary sphere
-      const sphereGeo = new THREE.SphereGeometry(1, 64, 64);
+      // Terrestrial planets use 128 segments to enable detailed physical terrain displacement, gas giants use 64
+      const isTerrestrial = ['mercury', 'venus', 'earth', 'mars'].includes(key);
+      const subdivisions = isTerrestrial ? 128 : 64;
+      const sphereGeo = new THREE.SphereGeometry(1, subdivisions, subdivisions);
       let material;
 
       // Create high-end procedural textures
@@ -231,7 +234,11 @@ class SolarSystemApp {
 
       const mesh = new THREE.Mesh(sphereGeo, material);
       mesh.name = `${key}_sphere`;
-      mesh.scale.setScalar(visualSize);
+      
+      // Apply oblate spheroid squashing (flattening due to centrifugal rotation)
+      const squashFactor = data.orbital.flattening || 1.0;
+      mesh.scale.set(visualSize, visualSize * squashFactor, visualSize);
+      
       mesh.castShadow = (key !== 'sun');
       mesh.receiveShadow = (key !== 'sun');
       bodyGroup.add(mesh);
@@ -346,11 +353,27 @@ class SolarSystemApp {
       roughness = 0.75; // gas giant soft sheen
     }
     
-    const mat = new THREE.MeshStandardMaterial({
+    const matParams = {
       map: texture,
       roughness: roughness,
       metalness: metalness
-    });
+    };
+
+    // Apply GPU-accelerated physical terrain displacement for solid terrestrial worlds
+    const displacementSettings = {
+      mercury: { scale: 0.022, bias: -0.006 },
+      venus: { scale: 0.015, bias: -0.004 },
+      earth: { scale: 0.025, bias: -0.008 },
+      mars: { scale: 0.035, bias: -0.012 }
+    };
+
+    if (displacementSettings[key]) {
+      matParams.displacementMap = texture;
+      matParams.displacementScale = displacementSettings[key].scale;
+      matParams.displacementBias = displacementSettings[key].bias;
+    }
+    
+    const mat = new THREE.MeshStandardMaterial(matParams);
 
     return mat;
   }
@@ -384,7 +407,11 @@ class SolarSystemApp {
       });
 
       const cloudMesh = new THREE.Mesh(cloudGeo, cloudMat);
-      cloudMesh.scale.setScalar(planetSize);
+      
+      // Match cloud squash to planet's oblate spheroid squash factor
+      const squashFactor = data.orbital.flattening || 1.0;
+      cloudMesh.scale.set(planetSize * 1.015, planetSize * 1.015 * squashFactor, planetSize * 1.015);
+      
       cloudMesh.name = 'earth_clouds';
       group.add(cloudMesh);
       this.cloudMeshes.push(cloudMesh);
@@ -682,11 +709,14 @@ class SolarSystemApp {
       }
 
       // Smoothly update sizes and reposition orbit circles
-      p.mesh.scale.setScalar(targetSize);
+      const squashFactor = data.orbital.flattening || 1.0;
+      p.mesh.scale.set(targetSize, targetSize * squashFactor, targetSize);
       
       // Update custom features sizes
       const earthClouds = p.group.getObjectByName('earth_clouds');
-      if (earthClouds) earthClouds.scale.setScalar(targetSize * 1.015);
+      if (earthClouds) {
+        earthClouds.scale.set(targetSize * 1.015, targetSize * 1.015 * squashFactor, targetSize * 1.015);
+      }
 
       const saturnRings = p.group.getObjectByName('saturn_rings');
       if (saturnRings) saturnRings.scale.setScalar(targetSize);

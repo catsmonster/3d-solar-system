@@ -856,18 +856,19 @@ body, html {
     position: fixed;
     top: 0;
     right: 0;
-    width: 280px;
+    width: min(280px, 85vw);
     height: 100vh;
     background: rgba(8, 8, 18, 0.85);
     border-left: 1px solid var(--border-glow);
     backdrop-filter: blur(25px);
     -webkit-backdrop-filter: blur(25px);
     z-index: 1600;
-    padding: 30px 20px;
+    padding: 25px 15px;
     transform: translateX(100%);
     transition: transform var(--transition-speed) var(--transition-bezier);
     pointer-events: auto;
     box-shadow: -10px 0 30px rgba(0,0,0,0.7);
+    overflow: hidden;
   }
 
   .mobile-hud-drawer.open {
@@ -881,6 +882,7 @@ body, html {
     border-bottom: 1px solid rgba(0, 243, 255, 0.2);
     padding-bottom: 15px;
     margin-bottom: 20px;
+    flex-shrink: 0;
   }
 
   .drawer-header h3 {
@@ -892,7 +894,11 @@ body, html {
     display: flex;
     flex-direction: column;
     gap: 25px;
+    overflow-y: auto;
+    flex-grow: 1;
+    padding-bottom: 20px;
   }
+
 
   .mobile-control-group {
     display: flex;
@@ -1067,7 +1073,27 @@ body, html {
     border-radius: 12px 12px 0 0;
     border-bottom: none;
     box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.7);
+    padding: 20px 15px;
   }
+
+  .hud-panel .infographic-box {
+    margin-bottom: 15px;
+  }
+
+  .hud-panel .planet-description {
+    margin-bottom: 15px;
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+
+  .hud-panel .stats-grid {
+    margin-bottom: 15px;
+  }
+
+  .hud-panel .panel-section-title {
+    margin-bottom: 8px;
+  }
+
 
   /* Hidden Joysticks styles */
   .virtual-joystick-container {

@@ -28,6 +28,9 @@ class SolarSystemApp {
     this.isPanning = false;
     this.startPanCoords = { x: 0, y: 0 };
     
+    // Keyboard navigation keys pressed state
+    this.keysPressed = {};
+    
     this.init();
   }
 
@@ -379,44 +382,7 @@ class SolarSystemApp {
   }
 
   addExtraPlanetFeatures(key, group, planetSize) {
-    // 1. Earth Atmosphere Cloud Layer
-    if (key === 'earth') {
-      const cloudGeo = new THREE.SphereGeometry(1.015, 64, 64);
-      
-      const cloudCanvas = document.createElement('canvas');
-      cloudCanvas.width = 512;
-      cloudCanvas.height = 256;
-      const cctx = cloudCanvas.getContext('2d');
-      cctx.clearRect(0, 0, 512, 256);
-
-      // Write white atmospheric cloud blobs
-      cctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-      for (let i = 0; i < 30; i++) {
-        cctx.beginPath();
-        cctx.arc(Math.random() * 512, 30 + Math.random() * 196, 15 + Math.random() * 45, 0, Math.PI * 2);
-        cctx.fill();
-      }
-
-      const cloudTexture = new THREE.CanvasTexture(cloudCanvas);
-      const cloudMat = new THREE.MeshStandardMaterial({
-        map: cloudTexture,
-        transparent: true,
-        blending: THREE.NormalBlending,
-        opacity: 0.6,
-        depthWrite: false
-      });
-
-      const cloudMesh = new THREE.Mesh(cloudGeo, cloudMat);
-      
-      // Match cloud squash to planet's oblate spheroid squash factor
-      const data = window.PLANET_DATA[key];
-      const squashFactor = data.orbital.flattening || 1.0;
-      cloudMesh.scale.set(planetSize * 1.015, planetSize * 1.015 * squashFactor, planetSize * 1.015);
-      
-      cloudMesh.name = 'earth_clouds';
-      group.add(cloudMesh);
-      this.cloudMeshes.push(cloudMesh);
-    }
+    // 1. Earth Atmosphere Cloud Layer - Removed for now by user request
 
     // 2. Saturn rings
     if (key === 'saturn') {
@@ -900,6 +866,22 @@ class SolarSystemApp {
       this.camera.updateProjectionMatrix();
       this.renderer.setSize(window.innerWidth, window.innerHeight);
     });
+
+    // Keyboard navigation key state tracking
+    window.addEventListener('keydown', (e) => {
+      const key = e.key.toLowerCase();
+      this.keysPressed[key] = true;
+    });
+
+    window.addEventListener('keyup', (e) => {
+      const key = e.key.toLowerCase();
+      this.keysPressed[key] = false;
+    });
+
+    // Reset keyboard keys map on browser tab blur to prevent keys getting stuck
+    window.addEventListener('blur', () => {
+      this.keysPressed = {};
+    });
   }
 
   setupInteraction() {
@@ -962,6 +944,9 @@ class SolarSystemApp {
   animate() {
     requestAnimationFrame(() => this.animate());
 
+    // Handle WASD / Arrow keyboard navigation bounded to the solar system grid
+    this.handleKeyboardNavigation();
+
     // Update orbit positions (only if not paused)
     if (!this.isPaused) {
       const dt = 0.01 * this.speedMultiplier;
@@ -1021,6 +1006,58 @@ class SolarSystemApp {
 
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
+  }
+
+  // --- Keyboard Panning & Navigation Engine ---
+  handleKeyboardNavigation() {
+    let dx = 0;
+    let dz = 0;
+
+    // Monitor keys pressed state map
+    if (this.keysPressed['w'] || this.keysPressed['arrowup']) dz += 1;
+    if (this.keysPressed['s'] || this.keysPressed['arrowdown']) dz -= 1;
+    if (this.keysPressed['a'] || this.keysPressed['arrowleft']) dx -= 1;
+    if (this.keysPressed['d'] || this.keysPressed['arrowright']) dx += 1;
+
+    if (dx !== 0 || dz !== 0) {
+      // Break selected body tracking focus to permit free panning navigation
+      if (this.selectedBody) {
+        this.deselectPlanet();
+      }
+
+      // Calculate direction vectors projected horizontally relative to camera viewing direction
+      const forward = new THREE.Vector3();
+      this.camera.getWorldDirection(forward);
+      forward.y = 0; // Lock movement strictly to the horizontal orbital grid
+      forward.normalize();
+
+      const right = new THREE.Vector3();
+      right.crossVectors(forward, new THREE.Vector3(0, 1, 0)); // Cross with world vertical Up vector
+      right.y = 0;
+      right.normalize();
+
+      // Assemble combined vector inputs
+      const moveDirection = new THREE.Vector3();
+      moveDirection.addScaledVector(forward, dz);
+      moveDirection.addScaledVector(right, dx);
+      moveDirection.normalize();
+
+      // Dynamic movement speed scaled proportionally to camera distance for natural accuracy
+      const distance = this.camera.position.distanceTo(this.controls.target);
+      const panSpeed = Math.max(0.4, distance * 0.015);
+
+      // Translate controls target coordinate focus and shift camera symmetrically
+      const movement = moveDirection.multiplyScalar(panSpeed);
+      this.controls.target.add(movement);
+      this.camera.position.add(movement);
+
+      // Limit/bound controls target to the boundary bounds of the solar system (max 600 units from Sun coordinate)
+      if (this.controls.target.length() > 600) {
+        const excess = this.controls.target.clone().setLength(600).sub(this.controls.target);
+        this.controls.target.add(excess);
+        this.camera.position.add(excess);
+      }
+    }
   }
 }
 
